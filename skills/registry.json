@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "skills": [
+    {"name": "dependency-doctor", "path": "skills/dependency-doctor", "source": "https://github.com/Shubhamsaboo/awesome-llm-apps", "install": "npx skills add https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/agent_skills/dependency-doctor"},
+    {"name": "commit-archaeologist", "path": "skills/commit-archaeologist", "source": "https://github.com/Shubhamsaboo/awesome-llm-apps", "install": "npx skills add https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/agent_skills/commit-archaeologist"},
+    {"name": "first-reader", "path": "skills/first-reader", "source": "https://github.com/Shubhamsaboo/awesome-llm-apps", "install": "npx skills add https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/agent_skills/first-reader"},
+    {"name": "supply-chain-reviewer", "path": "skills/supply-chain-reviewer", "source": "local"}
+  ]
+}

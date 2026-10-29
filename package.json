@@ -1,0 +1,24 @@
+{
+  "name": "ai-sc-goat-00-dortucx",
+  "version": "0.0.1",
+  "private": true,
+  "description": "AI supply chain demo: JS/TS side",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "openai": "^4.77.0",
+    "@google/genai": "^1.0.0",
+    "ai": "^4.1.0",
+    "@ai-sdk/anthropic": "^1.1.0",
+    "@ai-sdk/openai": "^1.1.0",
+    "langchain": "^0.3.0",
+    "@langchain/core": "^0.3.0",
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@huggingface/transformers": "^3.0.0",
+    "ollama": "^0.5.11"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/inspector": "^0.14.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0"
+  }
+}
