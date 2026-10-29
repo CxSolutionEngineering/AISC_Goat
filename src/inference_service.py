@@ -27,7 +27,7 @@ def main() -> None:
     _tokenizer = load_tokenizer()
 
     generator = build_pipeline()
-    out = generator("Hello from the goat client:", max_new_tokens=16)
+    out = generator("Hello from the AISC_Goat client:", max_new_tokens=16)
     print(out)
 
 

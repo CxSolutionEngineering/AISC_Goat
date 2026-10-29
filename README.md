@@ -1,18 +1,33 @@
-# Branch 00: dortucx (live HF scan validation + AI supply chain demo)
+# AI Supply Chain Goat (AISC_Goat)
 
-Client codebase for validating and demoing Checkmarx AI Supply Chain Security.
-It does two jobs:
+**Repo:** https://github.com/CxSolutionEngineering/AISC_Goat
 
-1. **Live scan validation.** It loads **real, public, scannable** Hugging Face
-   models from the `dortucx` account. Unlike the synthetic `01`–`07` scenarios
-   (which use fictional `GoatModel` names), this branch references actual HF repo
-   IDs so the full pipeline can be validated end to end.
+AI Supply Chain Goat is an intentionally vulnerable AI codebase for validating
+and demoing Checkmarx AI Supply Chain Security. It is the single demo project
+referenced by the AI Supply Chain Security demo narrative. It does two jobs:
+
+1. **Live scan validation (branch 00, dortucx).** It loads **real, public,
+   scannable** Hugging Face models from the `dortucx` account. Unlike the
+   synthetic `01`–`07` scenarios (which use fictional `GoatModel` names), this
+   branch references actual HF repo IDs so the full pipeline can be validated
+   end to end.
 2. **AI supply chain discovery demo.** It carries a spread of AI components from
    several providers (models, SDKs, agent frameworks, MCP clients and servers,
    and agent skills) so the Global Inventory has realistic, varied entries.
 
 > Code is illustrative. Apart from the original `src/` entrypoints, nothing here
 > is expected to run end to end. It exists to be scanned, not executed.
+
+## Using it in a demo
+
+```bash
+git clone https://github.com/CxSolutionEngineering/AISC_Goat.git
+```
+
+Onboard the repo as a project in a Checkmarx One tenant with AI Supply Chain
+Security enabled and run a full scan. Before a customer call, confirm that
+`dortucx/unkindmodel` and `TinyLlama 1.1B Chat v1.0` show Risk Evaluation
+findings (see [Expected scan results](#expected-scan-results)).
 
 ## Scan pipeline
 
