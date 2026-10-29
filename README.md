@@ -1,43 +1,40 @@
 # AI Supply Chain Goat (AISC_Goat)
 
-**Repo:** https://github.com/CxSolutionEngineering/AISC_Goat
+An intentionally vulnerable codebase for testing AI supply chain security
+tooling. It pulls in a broad, realistic mix of AI components (open-weight
+models, hosted model SDKs, agent frameworks, MCP clients and servers, and agent
+skills) and seeds them with common AI supply chain risks, so you can see what
+your discovery and scanning tools actually find.
 
-AI Supply Chain Goat is an intentionally vulnerable AI codebase for validating
-and demoing Checkmarx AI Supply Chain Security. It is the single demo project
-referenced by the AI Supply Chain Security demo narrative. It does two jobs:
+> [!WARNING]
+> **Do not run this code outside a disposable sandbox.** It references public
+> Hugging Face models that contain malicious payloads and loads them with
+> `trust_remote_code=True`. Most of the code is illustrative and is meant to be
+> scanned, not executed.
 
-1. **Live scan validation (branch 00, dortucx).** It loads **real, public,
-   scannable** Hugging Face models from the `dortucx` account. Unlike the
-   synthetic `01`–`07` scenarios (which use fictional `GoatModel` names), this
-   branch references actual HF repo IDs so the full pipeline can be validated
-   end to end.
-2. **AI supply chain discovery demo.** It carries a spread of AI components from
-   several providers (models, SDKs, agent frameworks, MCP clients and servers,
-   and agent skills) so the Global Inventory has realistic, varied entries.
+## Why this exists
 
-> Code is illustrative. Apart from the original `src/` entrypoints, nothing here
-> is expected to run end to end. It exists to be scanned, not executed.
+AI components rarely show up in a traditional SBOM or SCA report. Models are
+pulled by string ID at runtime, MCP servers are declared in config files and
+launched with `npx` or `uvx`, and agent skills ship their own executable
+scripts. AISC_Goat gives you a single repository to check whether a tool can:
 
-## Using it in a demo
+- **Discover** AI assets across Python, TypeScript, JSON config, and Markdown
+  skill definitions.
+- **Attribute** each asset to the exact file and line where it is referenced.
+- **Detect risk** in the model artifacts themselves, not just in the code that
+  loads them.
+- **Produce an AI bill of materials (AI-BOM)** that reflects what is really in
+  the codebase.
+
+## Quick start
 
 ```bash
 git clone https://github.com/CxSolutionEngineering/AISC_Goat.git
 ```
 
-Onboard the repo as a project in a Checkmarx One tenant with AI Supply Chain
-Security enabled and run a full scan. Before a customer call, confirm that
-`dortucx/unkindmodel` and `TinyLlama 1.1B Chat v1.0` show Risk Evaluation
-findings (see [Expected scan results](#expected-scan-results)).
-
-## Scan pipeline
-
-```
-Pedro discovery (regex over this repo)
-  -> emits AI assets (models, SDKs, agents, MCP servers, skills)
-    -> ai-sc-risks filters to AI Model, passes HF URL
-      -> LLM Scanner clones e.g. https://huggingface.co/dortucx/unkindmodel (anonymous, ungated)
-        -> finds risks in the model repo -> written to scan_risks
-```
+Point your AI supply chain, SCA, or SAST tooling at the repository and compare
+its results with the inventory and risk tables below.
 
 ## Repository layout
 
@@ -48,9 +45,9 @@ Pedro discovery (regex over this repo)
 ├── package.json               # npm AI dependencies (JS/TS side)
 ├── requirements.txt           # PyPI AI dependencies
 ├── src/
-│   ├── model_loader.py        # Original: dortucx model + tokenizer loaders
-│   ├── inference_service.py   # Original: pipeline entrypoint
-│   ├── models/hub_models.py   # Multi-provider HF Hub models
+│   ├── model_loader.py        # Loads the malicious test model + tokenizer
+│   ├── inference_service.py   # Pipeline entrypoint
+│   ├── models/hub_models.py   # Multi-provider Hugging Face Hub models
 │   ├── sdk_clients/           # Hosted model SDKs (Python + Vercel AI SDK in TS)
 │   └── agents/                # Agent frameworks, MCP-using agents, RAG pipeline
 ├── mcp/
@@ -60,20 +57,35 @@ Pedro discovery (regex over this repo)
 └── agents/upstream/           # Agent apps copied from awesome-llm-apps
 ```
 
-## Expected scan results
+## What a scanner should find
 
-| Model | Expected findings | Notes |
+### Model artifact risks
+
+| Model | What's in it | Why it matters |
 |---|---|---|
-| `dortucx/unkindmodel` | 11 High: 4 Malicious pickle / Torch gadget patterns, 2 Auto-loading from JSON / config, 5 Direct OS command execution | Known-malicious fixture. `config.json` uses `auto_map` to load `this_tokenizer_is_evil_actually.py`, which calls `os.system`. |
-| `dortucx/unkindtokenizer` | Findings expected | Known-malicious fixture. |
-| `TinyLlama/TinyLlama-1.1B-Chat-v1.0` | 4 High: Malicious pickle / Torch gadget patterns (e.g. `eval` in `tokenizer.model`) | Mainstream model. `tokenizer.model` is a SentencePiece vocabulary, so the `eval` hit may be a literal token rather than code. Treat as "flagged for review." |
-| `google/gemma-2-2b-it` | Skipped (`no credentials configured`) | Gated model; exercises the skip path. |
-| Other models | None expected | Mainstream models included for inventory breadth. |
+| `dortucx/unkindmodel` | `config.json` uses `auto_map` to point `AutoModel` at a bundled Python file, which calls `os.system`. Binary files also contain pickle / Torch gadget patterns. | Loading the model with `trust_remote_code=True` runs attacker code with the privileges of the process: a developer laptop, a CI runner, or an inference server and its credentials. |
+| `dortucx/unkindtokenizer` | Malicious test tokenizer. | Tokenizers are loaded automatically alongside models and are easy to overlook. |
+| `google/gemma-2-2b-it` | Gated model; requires an access token. | Checks how a tool handles models it cannot download anonymously. |
+| `TinyLlama/TinyLlama-1.1B-Chat-v1.0` | A widely used, mainstream model. | Not known to be malicious. Heuristic scanners may flag byte patterns in its binary files (for example, the string `eval` inside the SentencePiece vocabulary), which makes it a useful false-positive and triage check. |
+| Other models | Mainstream models from major providers. | Included for inventory breadth. No risks expected. |
 
-The `dortucx` fixtures back the LLM Scanner's own
-`tests/integration/hf/unkindmodel.json` / `unkindtokenizer.json`, so a working
-scan should return findings rather than an empty result. Counts reflect the
-scanner at the time of writing and may shift as rules are tuned.
+The `dortucx` models are public test fixtures built to be malicious. They are
+not affiliated with this repository.
+
+### Code and configuration risks
+
+| Pattern | Where |
+|---|---|
+| `trust_remote_code=True` | `src/model_loader.py`, `src/inference_service.py`, `src/models/hub_models.py` (phi-2) |
+| Direct file pull bypassing `from_pretrained` | `hf_hub_download` in `src/models/hub_models.py` |
+| Model IDs referenced only through constants | `MISTRAL_REPO`, `GEMMA_REPO` in `src/models/hub_models.py` |
+| Unpinned MCP package (`@latest`) | `.mcp.json` (Playwright) |
+| Over-privileged MCP tool (`shell=True`) | `run_shell` in `mcp/servers/notes_server.py` |
+| Remote MCP servers (third-party data egress) | Context7, DeepWiki |
+| MCP servers declared only in config | Playwright and Notion in `.mcp.json` |
+| Floating dependency ranges | `requirements.txt`, `package.json` |
+| Conflicting nested manifests | `agents/upstream/*/requirements.txt` |
+| Agent skills that ship executable scripts | `skills/dependency-doctor`, `skills/commit-archaeologist`, `skills/first-reader` |
 
 ## Component inventory
 
@@ -92,10 +104,6 @@ scanner at the time of writing and may shift as rules are tuned.
 | `sentence-transformers/all-MiniLM-L6-v2` | SBERT | `src/models/hub_models.py`, `src/agents/rag_pipeline.py` | `SentenceTransformer`, `HuggingFaceEmbeddings` |
 | `openai/whisper-tiny` | OpenAI | `src/models/hub_models.py` | `AutoProcessor` / `AutoModelForSpeechSeq2Seq` |
 | `TinyLlama/TinyLlama-1.1B-Chat-v1.0` | TinyLlama | `src/models/hub_models.py` | `snapshot_download` |
-
-Mistral and Gemma are referenced only through constants (`MISTRAL_REPO`,
-`GEMMA_REPO`), which tests whether discovery resolves IDs that aren't passed
-inline.
 
 ### Hosted model SDKs
 
@@ -136,11 +144,11 @@ inline.
 | Context7 | `.mcp.json`, `mcp/clients/multi_client.py` | Remote HTTP | n/a |
 | DeepWiki | `.mcp.json`, `mcp/clients/multi_client.py`, `src/agents/google_adk_agent.py` | Remote SSE / HTTP | n/a |
 
-**About `.mcp.json`:** this is the project-scoped MCP config read by Claude Code
+`.mcp.json` is the project-scoped MCP configuration format read by Claude Code
 and other MCP clients, and it is committed on purpose. Playwright and Notion are
-declared **only** here, so if they appear in the inventory, config-file
-discovery is working; if only code-referenced servers appear, that is a coverage
-gap. The file contains no secrets; tokens are `${ENV_VAR}` placeholders.
+declared **only** there, so they are a direct test of whether a tool discovers
+MCP servers from configuration as well as from code. The file contains no
+secrets; tokens are `${ENV_VAR}` placeholders.
 
 ### MCP clients
 
@@ -158,7 +166,7 @@ gap. The file contains no secrets; tokens are `${ENV_VAR}` placeholders.
 | `dependency-doctor` | awesome-llm-apps | Yes (`scripts/dep_doctor.py`) |
 | `commit-archaeologist` | awesome-llm-apps | Yes (`scripts/archaeologist.py`) |
 | `first-reader` | awesome-llm-apps | Yes (several Python scripts + HTML template) |
-| `supply-chain-reviewer` | Local | No |
+| `supply-chain-reviewer` | This repo | No |
 
 `skills/registry.json` lists all four with their source and `npx skills add`
 install commands.
@@ -167,42 +175,35 @@ install commands.
 
 `github_mcp_agent`, `multi_mcp_agent_router`, `mixture_of_agents`, and
 `rag_agent_cohere`, copied unmodified with their own `requirements.txt` files.
-Those pins intentionally differ from (and in places conflict with) the root
-`requirements.txt`, which gives SCA something to reconcile.
-
-## Intentional risk patterns
-
-| Pattern | Where |
-|---|---|
-| `trust_remote_code=True` | `src/model_loader.py`, `src/inference_service.py`, `src/models/hub_models.py` (phi-2) |
-| Known-malicious model artifacts | `dortucx/unkindmodel`, `dortucx/unkindtokenizer` |
-| Gated model (credential skip path) | `google/gemma-2-2b-it` |
-| Direct file pull bypassing `from_pretrained` | `hf_hub_download` in `src/models/hub_models.py` |
-| Unpinned MCP package (`@latest`) | `.mcp.json` (Playwright) |
-| Over-privileged MCP tool (`shell=True`) | `run_shell` in `mcp/servers/notes_server.py` |
-| Remote MCP servers (third-party data egress) | Context7, DeepWiki |
-| Floating dependency ranges | `requirements.txt`, `package.json` |
-| Conflicting nested manifests | `agents/upstream/*/requirements.txt` |
-| Skills that ship executable scripts | `skills/dependency-doctor`, `skills/commit-archaeologist`, `skills/first-reader` |
+Their pins intentionally differ from (and in places conflict with) the root
+`requirements.txt`.
 
 ## Environment variables
 
-Nothing in the repo holds real credentials. If you do run anything, these are
-read from the environment (put them in a local `.env`, which is git-ignored):
+The repository contains no real credentials. If you run anything, these are
+read from the environment (use a local `.env`, which is git-ignored):
 
 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `COHERE_API_KEY`,
 `TOGETHER_API_KEY`, `MISTRAL_API_KEY`, `GITHUB_TOKEN`, `NOTION_TOKEN`, and
 optionally `HF_TOKEN` for the gated Gemma model.
 
-## Run locally (optional)
+## Running it (sandbox only)
 
-Only the original entrypoint is meant to run, and it loads a malicious fixture
-with `trust_remote_code=True`. **Run it only in a disposable sandbox.**
+Only the `src/` entrypoint is meant to run, and it loads a malicious test model
+with `trust_remote_code=True`. Use a throwaway VM or container with no
+credentials and no access to anything you care about.
 
 ```bash
 pip install -r requirements.txt
 python -m src.inference_service
 ```
+
+## Contributing
+
+Additions are welcome, especially new AI component types, providers, or risk
+patterns that tools commonly miss. Please keep the repo safe to clone: reference
+malicious artifacts by public ID rather than committing them, and never commit
+real credentials.
 
 ## Attribution
 
@@ -210,3 +211,6 @@ Skills under `skills/` (except `supply-chain-reviewer`) and everything under
 `agents/upstream/` are copied from
 [Shubhamsaboo/awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps)
 under the Apache-2.0 license. See `agents/upstream/LICENSE-awesome-llm-apps`.
+
+Model names and trademarks belong to their respective owners. Their inclusion
+here does not imply that any mainstream model is unsafe.
